@@ -8,8 +8,15 @@ def get_report():
     user = request.args.get('user')
     password = request.args.get('pass')
     link = request.args.get('link', 'https://accesscenter.roundrockisd.org/')
-
+    student_id = request.args.get('student_id')
+    
     session = HACSession(user, password, link)
+    
+    if student_id:
+        success = session.switch_student(student_id)
+        if not success:
+            return jsonify({"error": f"Failed to switch to student ID {student_id}"}), 400
+    
     data = session.get_report()
     return jsonify(data)
 
