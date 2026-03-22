@@ -13,7 +13,15 @@ def create_app():
     app = Flask(__name__)
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-    CORS(app)
+    CORS(
+        app,
+        resources={r"/*": {"origins": "*"}},
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers="*",
+        expose_headers="*",
+        supports_credentials=False,
+        max_age=86400,
+    )
     app.config["RATELIMIT_DEFAULT"] = "100 per hour"
     limiter.init_app(app)
 
