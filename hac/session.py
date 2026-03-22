@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import logging
+from datetime import date, datetime, timedelta
 from utils.helpers import safe_get, safe_post, check_link, safe_find_text
 
 logging.basicConfig(
@@ -520,3 +521,70 @@ class HACSession:
         name = span.text.strip()
         logger.info(f"[SESSION] active student: {name}")
         return {"name": name}
+
+    def get_week_day_type(self, target_date: date):
+        """
+        Scrape WeekView and return A/B day info for the provided date.
+        """
+        if not self.logged_in:
+            self.login()
+
+        week_start = target_date - timedelta(days=target_date.weekday())
+        weekview_url = self.base_url + "HomeAccess/Home/WeekView"
+        params = {"startDate": week_start.strftime("%m/%d/%Y 00:00:00")}
+
+        response = safe_get(self.session, weekview_url, params=params)
+        if not response:
+            logger.warning("Failed to fetch WeekView page.")
+            return None
+
+        soup = BeautifulSoup(response.text, "lxml")
+        header_cells = soup.select(
+            "table.sg-homeview-table thead tr.sg-asp-table-header-row td.sg-cell-width"
+        )
+        if not header_cells:
+            logger.warning("WeekView header cells not found.")
+            return None
+
+        weekday_index = {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+        }
+
+        week_data = []
+        for cell in header_cells:
+            text = " ".join(cell.stripped_strings)
+            weekday_match = re.search(r"\b(Monday|Tuesday|Wednesday|Thursday|Friday)\b", text, re.IGNORECASE)
+            date_match = re.search(r"\b(\d{2}/\d{2})\b", text)
+            day_type_match = re.search(r"Day:\s*([AB])\b", text, re.IGNORECASE)
+
+            if not weekday_match:
+                continue
+
+            weekday_name = weekday_match.group(1).title()
+            idx = weekday_index[weekday_name.lower()]
+            resolved_date = week_start + timedelta(days=idx)
+
+            week_data.append({
+                "weekday": weekday_name,
+                "date": resolved_date.isoformat(),
+                "mmdd": date_match.group(1) if date_match else resolved_date.strftime("%m/%d"),
+                "day_type": day_type_match.group(1).upper() if day_type_match else None,
+            })
+
+        if not week_data:
+            logger.warning("No weekday/day-type data parsed from WeekView.")
+            return None
+
+        target_info = next((row for row in week_data if row["date"] == target_date.isoformat()), None)
+        return {
+            "target_date": target_date.isoformat(),
+            "week_start": week_start.isoformat(),
+            "week": week_data,
+            "day_type": target_info["day_type"] if target_info else None,
+            "is_weekend": target_date.weekday() >= 5,
+            "found": bool(target_info and target_info.get("day_type")),
+        }

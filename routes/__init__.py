@@ -5,6 +5,7 @@ from .auth_routes import auth_bp
 from .transcript_routes import transcript_bp
 from .report_routes import report_bp
 from .lookup_routes import lookup_bp
+from .daytype_routes import daytype_bp
 from .logs import logs_bp
 from .login_route import login_bp
 from .logout import logout_bp
@@ -18,6 +19,7 @@ def register_routes(app):
     app.register_blueprint(transcript_bp)
     app.register_blueprint(report_bp)
     app.register_blueprint(lookup_bp)
+    app.register_blueprint(daytype_bp)
     app.register_blueprint(logs_bp)
     app.register_blueprint(login_bp)
     app.register_blueprint(logout_bp)
