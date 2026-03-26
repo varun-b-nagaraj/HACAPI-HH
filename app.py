@@ -7,6 +7,7 @@ from extensions import limiter
 import os
 
 load_dotenv()
+ALLOWED_CORS_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 
 
 def create_app():
@@ -26,6 +27,21 @@ def create_app():
     limiter.init_app(app)
 
     register_routes(app)
+
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            return ("", 204)
+
+    @app.after_request
+    def add_cors_headers(response):
+        request_headers = request.headers.get("Access-Control-Request-Headers")
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = ALLOWED_CORS_METHODS
+        response.headers["Access-Control-Allow-Headers"] = request_headers if request_headers else "*"
+        response.headers["Access-Control-Expose-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        return response
 
     if os.getenv("FLASK_ENV") != "development":
         @app.before_request
