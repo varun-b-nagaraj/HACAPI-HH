@@ -1,5 +1,4 @@
 from flask import Blueprint, jsonify
-from supabase import create_client
 import os
 import logging
 from .hac_auth import build_hac_session_from_request
@@ -28,6 +27,7 @@ def get_supabase_client():
         return None, _supabase_init_error
 
     try:
+        from supabase import create_client
         _supabase_client = create_client(supabase_url, supabase_key)
         return _supabase_client, None
     except Exception as exc:
