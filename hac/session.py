@@ -381,20 +381,37 @@ class HACSession:
             return None
 
         soup = BeautifulSoup(response.text, "lxml")
-        form = soup.find("form", id="StudentPicker")
+        form = soup.find("form", id="StudentPicker") or soup.find("form")
         if not form:
             logger.warning("StudentPicker form not found.")
             return None
 
         students = []
-        for label in form.find_all("label", class_="sg-student-picker-row"):
-            input_tag = label.find("input", {"name": "studentId"})
+        # Current HAC markup uses row DIVs with a radio input + nested LABEL.
+        for row in form.select(".sg-student-picker-row"):
+            input_tag = row.find("input", {"name": "studentId"})
             if not input_tag:
                 continue
-            student_id = input_tag.get("value")
-            name_span = label.find("span", class_="sg-picker-student-name")
+            student_id = str(input_tag.get("value", "")).strip()
+            if not student_id:
+                continue
+
+            name_span = row.find("span", class_="sg-picker-student-name")
             name = name_span.text.strip() if name_span else "Unknown"
             students.append({"id": student_id, "name": name})
+
+        # Back-compat fallback for older HAC templates.
+        if not students:
+            for label in form.find_all("label", class_="sg-student-picker-row"):
+                input_tag = label.find("input", {"name": "studentId"})
+                if not input_tag:
+                    continue
+                student_id = str(input_tag.get("value", "")).strip()
+                if not student_id:
+                    continue
+                name_span = label.find("span", class_="sg-picker-student-name")
+                name = name_span.text.strip() if name_span else "Unknown"
+                students.append({"id": student_id, "name": name})
 
         return students
 
