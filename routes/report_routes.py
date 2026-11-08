@@ -28,6 +28,28 @@ def get_report():
         return jsonify({"error": str(exc)}), 500
 
 
+@report_bp.route("/getSchedule", methods=["POST"])
+def get_schedule():
+    payload, session, err_json, err_code = build_hac_session_from_request()
+    if err_json:
+        return err_json, err_code
+
+    student_id = str(payload.get("student_id", "")).strip()
+
+    try:
+        if student_id and not session.switch_student(student_id):
+            return jsonify({"error": f"Failed to switch to student {student_id}"}), 400
+
+        schedule = session.get_schedule()
+        if not schedule:
+            return jsonify({"error": "Failed to retrieve schedule"}), 404
+
+        return jsonify(schedule), 200
+    except Exception as exc:
+        logger.exception("Error in /getSchedule")
+        return jsonify({"error": str(exc)}), 500
+
+
 @report_bp.route("/getIpr", methods=["POST"])
 def get_ipr():
     _, session, err_json, err_code = build_hac_session_from_request()

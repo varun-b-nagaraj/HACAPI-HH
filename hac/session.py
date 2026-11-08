@@ -282,6 +282,37 @@ class HACSession:
             "data": trimmed_data
         }
 
+    def get_schedule(self):
+        """Classes > Schedule table: one row per course section with its period,
+        A/B day, room, teacher, and marking periods."""
+        if not self.logged_in:
+            self.login()
+
+        url = self.base_url + 'HomeAccess/Content/Student/Classes.aspx'
+        response = safe_get(self.session, url)
+        if not response:
+            logger.warning("Could not fetch schedule page.")
+            return None
+
+        soup = BeautifulSoup(response.text, 'lxml')
+        table = soup.find('table', id='plnMain_dgSchedule')
+        if not table:
+            logger.warning("Schedule table not found.")
+            return None
+
+        header_row = table.find('tr', class_='sg-asp-table-header-row')
+        headers = [c.get_text(strip=True) for c in header_row.find_all(['th', 'td'])] if header_row else []
+        rows = [
+            [td.get_text(strip=True) for td in tr.find_all('td')]
+            for tr in table.find_all('tr', class_='sg-asp-table-data-row')
+        ]
+        if not headers or not rows:
+            logger.warning("Schedule table is empty.")
+            return None
+
+        logger.info(f"Schedule parsed: {len(rows)} rows.")
+        return {"headers": headers, "data": rows}
+
     def get_classes(self):
         if not self.logged_in:
             self.login()
